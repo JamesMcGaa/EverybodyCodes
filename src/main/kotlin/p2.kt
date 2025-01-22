@@ -41,7 +41,7 @@ fun main() {
 
     val input2c = File("inputs/input2c.txt").readLines()
     val runesC = input2c[0].removePrefix("WORDS:").split(",")
-    val targetsC = Utils.readAsGrid("inputs/input2c.txt", 2 until input2c.size, {it})
+    val targetsC = Utils.readAsGrid("inputs/input2c.txt", 2 until input2c.size) { it }
     val maxY = targetsC.keys.maxOf { it.y }
 
     val markedCoords = mutableSetOf<Coord>()
@@ -78,6 +78,3 @@ fun mirrorIndex(str: String, idx: Int): Int {
     return str.length - 1 - idx
 }
 
-fun <T> mirrorIndex(collection: Collection<T>, idx: Int): Int {
-    return collection.size - 1 - idx
-}
