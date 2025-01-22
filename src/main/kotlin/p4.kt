@@ -27,6 +27,7 @@ fun Collection<Long>.median(): Double {
             val middle2 = sorted[sorted.size / 2]
             (middle1 + middle2) / 2.0
         }
+
         else -> sorted[sorted.size / 2].toDouble()
     }
 }

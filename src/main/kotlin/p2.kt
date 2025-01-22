@@ -1,9 +1,9 @@
-import java.io.File
 import Utils.Coord
 import Utils.Coord.Companion.DOWN_COORD
 import Utils.Coord.Companion.LEFT_COORD
 import Utils.Coord.Companion.RIGHT_COORD
 import Utils.Coord.Companion.UP_COORD
+import java.io.File
 
 fun main() {
     val input2a = File("inputs/input2a.txt").readLines()
@@ -45,16 +45,14 @@ fun main() {
     val maxY = targetsC.keys.maxOf { it.y }
 
     val markedCoords = mutableSetOf<Coord>()
-    runesC.forEach {
-        rune ->
+    runesC.forEach { rune ->
         val runeLen = rune.length
-        targetsC.forEach {
-            coord, _ ->
+        targetsC.forEach { coord, _ ->
             listOf(LEFT_COORD, RIGHT_COORD, DOWN_COORD, UP_COORD).forEach direction@{ direction ->
                 var str = ""
                 var current = coord
                 val coordSet = mutableSetOf<Coord>()
-                repeat (runeLen) {
+                repeat(runeLen) {
                     if (current !in targetsC) {
                         return@direction
                     }

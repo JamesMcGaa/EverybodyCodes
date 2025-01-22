@@ -70,6 +70,7 @@ fun run5(rounds: Int?, inputFilename: String, mode: Int): String {
                 seen.add(hash)
             }
         }
+
         else -> throw Exception()
     }
 }

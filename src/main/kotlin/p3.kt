@@ -15,11 +15,11 @@ fun runP3(filename: String, partCRules: Boolean = false): Int {
     if (partCRules) {
         val maxX = grid.keys.maxOf { it.x }
         val maxY = grid.keys.maxOf { it.y }
-        for (y in -1 .. maxY + 1) {
+        for (y in -1..maxY + 1) {
             grid[Coord(-1, y)] = '.'
             grid[Coord(maxX + 1, y)] = '.'
         }
-        for (x in -1 .. maxX + 1) {
+        for (x in -1..maxX + 1) {
             grid[Coord(x, -1)] = '.'
             grid[Coord(x, maxY + 1)] = '.'
         }
@@ -27,9 +27,10 @@ fun runP3(filename: String, partCRules: Boolean = false): Int {
 
     var counter = 0
     var depth = 1
-    var startSet = grid.filterValues {it == '.'}.keys
+    var startSet = grid.filterValues { it == '.' }.keys
     while (true) {
-        val bfs = Utils.generalizedBFS(grid, startSet,
+        val bfs = Utils.generalizedBFS(
+            grid, startSet,
             isLegal = { coord, bfsGrid -> coord in bfsGrid },
             neighbors = { coord, bfsGrid ->
                 if (bfsGrid[coord] == '#') {
