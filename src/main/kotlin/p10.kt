@@ -1,6 +1,11 @@
+import Utils.Coord
+
 fun main() {
-    val grid = Utils.readAsGrid("inputs/input10a.txt", null, { it })
-    Utils.printGrid(grid)
+    println("Part A: ${getRunicWord(Utils.readAsGrid("inputs/input10a.txt", null) { it })}")
+    println("Part B: ${run10b()}")
+}
+
+fun getRunicWord(grid: MutableMap<Coord, Char>): String {
     val unfilled = grid.filterValues { it == '.' }.keys
     var partA = ""
     unfilled.forEach { coord ->
@@ -13,7 +18,26 @@ fun main() {
         // Ordering of iteration is the same as desired for the problem
         partA += grid[coord]
     }
-    println("Part A: $partA")
-    Utils.printGrid(grid)
+    return partA
+}
 
+fun run10b(): Int {
+    val grid = Utils.readAsGrid("inputs/input10b.txt", null) { it }
+    var counter = 0
+    val r = grid.keys.maxOf { it.x } / 9
+    val c = grid.keys.maxOf { it.y } / 9
+    for (i in 0..r) {
+        for (j in 0..c) {
+            val newGrid = grid.filterKeys { it.x in 9 * i until 9 * i + 8 && it.y in 9 * j until 9 * j + 8 }
+            val runicWord = getRunicWord(newGrid.toMutableMap())
+            counter += scoreRunicWord(runicWord)
+        }
+    }
+    return counter
+}
+
+fun scoreRunicWord(runicWord: String): Int {
+    var counter = 0
+    runicWord.forEachIndexed { index, ch -> counter += (index + 1) * (ch - 'A' + 1) }
+    return counter
 }
