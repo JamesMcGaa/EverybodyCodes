@@ -38,11 +38,10 @@ fun run14(filename: String, part: Part): Int {
     val mainTrunk = tree.filter { it.y == 0 && it.z == 0 }
 
     val partC = mainTrunk.minOf { mainTrunkSegment ->
-        val dists = Utils.generalizedBFS<ZCoord, Int>(
-            tree,
+        val dists = Utils.generalizedBFSV2(
             mainTrunkSegment,
-            isLegal = { coord: ZCoord, grid: Set<ZCoord> -> coord in grid },
-            neighbors = { coord: ZCoord, grid: Set<ZCoord> -> coord.manhattanNeighbors },
+            isLegal = { coord: ZCoord -> coord in tree },
+            neighbors = { coord: ZCoord -> coord.manhattanNeighbors },
         )
         leaves.sumOf { dists[it]!! }
     }
