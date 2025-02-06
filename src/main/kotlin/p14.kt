@@ -1,40 +1,56 @@
-import Utils.Coord
+import Utils.ZCoord
 import java.io.File
-import kotlin.math.absoluteValue
-import kotlin.math.max
-
 
 fun main() {
-    val commands = File("inputs/input14a.txt").readLines().first().split(",")
-    val grid = mutableSetOf<Coord>()
-    var current = Coord(0, 0)
-    var currentHeight = 0
-    var maxHeight = 0
-    commands.forEach {
-        val dir = it.first()
-        val amount = it.removePrefix(dir.toString()).toInt()
-        val dirCoord = when (dir) {
-            'U' -> Coord.UP_COORD
-            'D' -> Coord.DOWN_COORD
-            'L' -> Coord.LEFT_COORD
-            'R' -> Coord.RIGHT_COORD
-            'F' -> Unit
-            'B' -> Unit
-            else -> throw Exception()
-        }
+    println("Part A: ${run14("inputs/input14a.txt", Part.A)}")
+    println("Part B: ${run14("inputs/input14b.txt", Part.B)}")
+    println("Part C: ${run14("inputs/input14c.txt", Part.C)}")
+}
 
-        if (dir == 'U') {
-            currentHeight += amount
-            maxHeight = max(maxHeight, currentHeight)
-        } else if (dir == 'D') {
-            currentHeight -= amount
-        }
+fun run14(filename: String, part: Part): Int {
+    val commands = File(filename).readLines().map { it.split(",") }
+    val tree = mutableSetOf<ZCoord>()
+    val leaves = mutableSetOf<ZCoord>()
+    var tail = ZCoord(0, 0, 0)
 
-//        repeat(amount) {
-//            current += dirCoord
-//            grid.add(current)
-//        }
+    commands.forEach { command ->
+        tail = ZCoord(0, 0, 0)
+        command.forEach {
+            val dir = it.first()
+            val amount = it.removePrefix(dir.toString()).toInt()
+            val dirCoord = when (dir) {
+                'U' -> ZCoord.UP_COORD
+                'D' -> ZCoord.DOWN_COORD
+                'L' -> ZCoord.LEFT_COORD
+                'R' -> ZCoord.RIGHT_COORD
+                'F' -> ZCoord.FORWARD_COORD
+                'B' -> ZCoord.BACKWARD_COORD
+                else -> throw Exception()
+            }
+            repeat(amount) {
+                tail += dirCoord
+                tree.add(tail)
+            }
+        }
+        leaves.add(tail)
     }
-//    println("Part A: ${grid.minOf { it.x }.absoluteValue}")
-    println("Part A: $maxHeight")
+
+    val mainTrunk = tree.filter { it.y == 0 && it.z == 0 }
+
+    val partC = mainTrunk.minOf { mainTrunkSegment ->
+        val dists = Utils.generalizedBFS<ZCoord, Int>(
+            tree,
+            mainTrunkSegment,
+            isLegal = { coord: ZCoord, grid: Set<ZCoord> -> coord in grid },
+            neighbors = { coord: ZCoord, grid: Set<ZCoord> -> coord.manhattanNeighbors },
+        )
+        leaves.sumOf { dists[it]!! }
+    }
+
+
+    return when (part) {
+        Part.A -> -1 * tree.minOf { it.x }
+        Part.B -> tree.size
+        Part.C -> partC
+    }
 }
