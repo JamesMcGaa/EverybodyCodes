@@ -4,52 +4,97 @@ import kotlin.math.max
 import kotlin.math.min
 
 fun main() {
-//    println("Part A: ${p12("inputs/input12a.txt")}")
-//    println("Part B: ${p12("inputs/input12b.txt")}")
+    println("Part A: ${p12("inputs/input12a.txt")}")
+    println("Part B: ${p12("inputs/input12b.txt")}")
     println("Part C: ${p12c("inputs/input12c.txt")}")
+}
+
+class Shot(
+    cardinality: Int,
+    var pos: Coord,
+    val power: Int,
+    var phase: Int,
+    var phaseProgress: Int = 0
+) {
+    val rankingValue = cardinality * power
+
+    fun move(maxXCurrent: Int, maxYCurrent: Int): Boolean {
+        val directionalCoord = when (phase) {
+            0 -> {
+                Coord.ORIGIN.downRight
+            }
+            1 -> {
+                Coord.ORIGIN.down
+            }
+            2 -> {
+                Coord.ORIGIN.downLeft
+            }
+            else -> throw Exception()
+        }
+        pos += directionalCoord
+        phaseProgress += 1
+        if (phase < 2 && phaseProgress == power) {
+            phaseProgress = 0
+            phase += 1
+        }
+        if (pos.y == 0 || pos.x > maxXCurrent || pos.y > maxYCurrent) {
+            return true
+        }
+        return false
+    }
 }
 
 fun p12c(filename: String): Int {
     val meteors = File(filename).readLines().map {
         val nums = it.split(" ").map { it.toInt() }
-        Coord(nums[1], nums[0]) // Flipped
-    }
+        Coord(nums[0], nums[1]) // Flipped
+    }.toMutableList() // Have to use a list here since Coords are dataclasses, and we are going to be modifying them
 
     // Populate our min score to hit each point in a grid
     val coordToMinScore = mutableMapOf<Coord, Int>()
-    val canonMap = mapOf('A' to Coord(0, 0), 'B' to Coord(1, 0), 'C' to Coord(2, 0))
-    val maximumMeteorVal = meteors.maxOf { max(it.x, it.y) } / 5
-    println(maximumMeteorVal)
+    val canonMap = mapOf('A' to Coord(0, 0), 'B' to Coord(0, 1), 'C' to Coord(0, 2))
+    val maximumMeteorVal = meteors.maxOf { max(it.x, it.y) }
+    val shots = mutableSetOf<Shot>()
     canonMap.entries.forEach { cannon ->
-        println(cannon)
+        val cardinality = (cannon.key - 'A' + 1)
         for (shootingPower in 1..maximumMeteorVal) {
-//            println(shootingPower)
-            val rankingValue = shootingPower * (cannon.key - 'A' + 1)
-            var current = cannon.value
-            repeat(shootingPower) {
-                current += Coord.ORIGIN.downRight
-                coordToMinScore[current] = min(coordToMinScore.getOrDefault(current, Int.MAX_VALUE), rankingValue)
-            }
-            repeat(shootingPower) {
-                current += Coord.ORIGIN.right
-                coordToMinScore[current] = min(coordToMinScore.getOrDefault(current, Int.MAX_VALUE), rankingValue)
-            }
-            repeat(shootingPower) {
-                current += Coord.ORIGIN.upRight
-                coordToMinScore[current] = min(coordToMinScore.getOrDefault(current, Int.MAX_VALUE), rankingValue)
-            }
+            shots.add(Shot(cardinality, cannon.value, shootingPower, 0))
         }
     }
-    print(coordToMinScore.size)
 
-    val res =  meteors.map { meteor ->
-        val projectionDistance = max(meteor.x, meteor.y)
-        (0..projectionDistance).map { meteor + Coord.ORIGIN.upLeft * it }.minOf {
-            coordToMinScore.getOrDefault(it, Int.MAX_VALUE)
+    var maxX = meteors.maxOf {it.x}
+    var maxY = meteors.maxOf {it.y}
+    var counter = 0
+    while (meteors.isNotEmpty() || shots.isNotEmpty()) {
+        maxX -= 1
+        maxY -= 1
+        val shotsToRemove = mutableSetOf<Shot>()
+        shots.forEach { shot ->
+            val finished = shot.move(maxX, maxY)
+            if (finished) {
+                shotsToRemove.add(shot)
+            }
+            coordToMinScore[shot.pos] = min(coordToMinScore.getOrDefault(shot.pos, Int.MAX_VALUE), shot.rankingValue)
         }
+        shots.removeAll(shotsToRemove)
+
+        val meteorsToRemove = mutableSetOf<Coord>()
+        meteors.forEach { meteor ->
+            meteor.x -= 1
+            meteor.y -= 1
+            if (meteor in coordToMinScore) {
+                counter += coordToMinScore[meteor]!!
+                meteorsToRemove.add(meteor)
+            }
+            else if (meteor.x == 0 || meteor.y == 0) {
+                throw Exception("Should have shot down all meteors")
+            }
+        }
+        meteors.removeAll(meteorsToRemove)
     }
-    println(res)
-    return res.sum()
+
+
+    return counter
 }
 
 fun p12(filename: String): Int {
