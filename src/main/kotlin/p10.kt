@@ -1,60 +1,108 @@
 import Utils.Coord
 
 fun main() {
-    println("Part A: ${getRunicWord(Utils.readAsGrid("inputs/input10a.txt", null) { it })}")
-    println("Part B: ${run10b()}")
+//    println("Part A: ${getRunicWord(Utils.readAsGrid("inputs/input10a.txt", null) { it })}")
+//    println("Part B: ${run10b()}")
     run10c()
 }
 
-class RowColData(
-    val row: List<Coord>,
-    val col: List<Coord>,
+class SpaceData(
+    val row: MutableList<Coord>,
+    val col: MutableList<Coord>,
+    val otherInRow: List<Coord>,
+    val otherInCol: List<Coord>,
+)
+
+class QuestionData(
+    val isCol: Boolean,
+    val dependentSpaces: MutableSet<Coord>,
 )
 
 fun run10c(): Int {
     val grid = Utils.readAsGrid("inputs/input10c.txt", null) { it }
 
     // Setup main 3 data structures
-    val todo = mutableSetOf<Coord>()
-    val chunkIndicesToCoords = mutableMapOf<Pair<Int, Int>, MutableList<Coord>>()
-    val coordToRowColData = grid.filterValues { it == '.' }.keys.associate {
-        val rowIdx = (it.x - 2) / 6
-        val colIdx = (it.y - 2) / 6
-        chunkIndicesToCoords[Pair(rowIdx, colIdx)] =
-            chunkIndicesToCoords.getOrDefault(Pair(rowIdx, colIdx), mutableListOf()).apply { add(it) }
-        todo.add(it)
+    var todoSpaces = mutableSetOf<Coord>()
+    val questionToSpaces = mutableMapOf<Coord, QuestionData>()
+    // Coord to RowData
+    val spaceToSpaceData = grid.filterValues { it == '.' }.keys.associate { space ->
+        todoSpaces.add(space)
+
+        // Add this to our chunkMap
+        val rowIdx = (space.x - 2) / 6
+        val colIdx = (space.y - 2) / 6
+
+        val otherInRow = mutableListOf(
+            Coord(6 * rowIdx + 2, space.y),
+            Coord(6 * rowIdx + 3, space.y),
+            Coord(6 * rowIdx + 4, space.y),
+            Coord(6 * rowIdx + 5, space.y),
+        )
+        val otherInCol = mutableListOf(
+            Coord(space.x, 6 * colIdx + 2),
+            Coord(space.x, 6 * colIdx + 3),
+            Coord(space.x, 6 * colIdx + 4),
+            Coord(space.x, 6 * colIdx + 5),
+        )
+
+        val endsOfRow = mutableListOf(
+            Coord(6 * rowIdx, space.y),
+            Coord(6 * rowIdx + 1, space.y),
+            Coord(6 * rowIdx + 6, space.y),
+            Coord(6 * rowIdx + 7, space.y),
+        )
+        val endsOfCol = mutableListOf(
+            Coord(space.x, 6 * colIdx),
+            Coord(space.x, 6 * colIdx + 1),
+            Coord(space.x, 6 * colIdx + 6),
+            Coord(space.x, 6 * colIdx + 7),
+        )
+
+        endsOfCol.forEach { endCoord ->
+            if (grid[endCoord]!! == '?') {
+                questionToSpaces[endCoord] =
+                    questionToSpaces.getOrDefault(endCoord, QuestionData(isCol = true, mutableSetOf()))
+                        .apply { this.dependentSpaces.add(space) }
+            }
+        }
+        endsOfRow.forEach { endCoord ->
+            if (grid[endCoord]!! == '?') {
+                questionToSpaces[endCoord] =
+                    questionToSpaces.getOrDefault(endCoord, QuestionData(isCol = false, mutableSetOf()))
+                        .apply { this.dependentSpaces.add(space) }
+            }
+        }
+
+
+
         Pair(
-            it, RowColData(
-                row = listOf(
-                    Coord(6 * rowIdx, it.y),
-                    Coord(6 * rowIdx + 1, it.y),
-                    Coord(6 * rowIdx + 6, it.y),
-                    Coord(6 * rowIdx + 7, it.y),
-                ),
-                col = listOf(
-                    Coord(it.x, 6 * colIdx),
-                    Coord(it.x, 6 * colIdx + 1),
-                    Coord(it.x, 6 * colIdx + 6),
-                    Coord(it.x, 6 * colIdx + 7),
-                )
+            space, SpaceData(
+                row = endsOfRow,
+                col = endsOfCol,
+                otherInCol = otherInCol,
+                otherInRow = otherInRow,
             )
         )
     }
 
     while (true) {
+        println("loop")
         // Solve Loop - try all then return if successful
         var solved = false
-        val solvedSet = mutableSetOf<Coord>()
-        for (coord in todo) {
-            val rowColData = coordToRowColData[coord]!!
+        var solvedSet = mutableSetOf<Coord>()
+        for (coord in todoSpaces) {
+            val rowColData = spaceToSpaceData[coord]!!
             val intersection = rowColData.row.map { grid[it]!! } intersect rowColData.col.map { grid[it]!! }
-//            if (intersection.size > 1) {
+            if (intersection.size > 1) {
+                solved = true // For now
+                grid[coord] = intersection.first()
+                solvedSet.add(coord)
 //                println(intersection)
 //                println(coord)
-//                grid[coord] = '&'
+                grid[coord] = '&'
 //                Utils.printGrid(grid)
 //                throw Exception()
-//            }
+            }
             if (intersection.size == 1) {
                 solved = true
                 grid[coord] = intersection.first()
@@ -63,19 +111,52 @@ fun run10c(): Int {
         }
 
         if (solved) {
-            todo.removeAll(solvedSet)
+            println("solved 1")
+            todoSpaces.removeAll(solvedSet)
             continue
         }
 
         // Inference Loop - continue immediately to see if we can start solving again
+        solvedSet = mutableSetOf()
+        for (question in questionToSpaces) {
+            val questionCoord = question.key
+            val questionData = question.value
+            val questionDeps = (if (questionData.isCol) {
+                questionData.dependentSpaces.filter { grid[it]!! == '.' }
+                    .map { spaceToSpaceData[it]!!.row.filter { grid[it]!! != '?' }.map { grid[it]!! } }
+            } else {
+                questionData.dependentSpaces.filter { grid[it]!! == '.' }
+                    .map { spaceToSpaceData[it]!!.col.filter { grid[it]!! != '?' }.map { grid[it]!! } }
+            })
+            println(questionDeps)
+            if (questionDeps.size <= 1) {
+                continue
+            }
 
+            val intersection = questionDeps[0].toSet() intersect questionDeps[1].toSet()
+            if (intersection.size == 1) {
+                grid[questionCoord] = intersection.first()
+                solvedSet.add(questionCoord)
+                solved = true
+            }
+        }
 
+        if (solved) {
+            println("solved 2")
+            solvedSet.forEach { questionToSpaces.remove(it) }
+            continue
+        }
+
+        println("done")
         break // restart if nothing worked
     }
 
     Utils.printGrid(grid)
     return 0
 }
+
+
+/////////////////////////////////////////////////
 
 fun getRunicWord(grid: MutableMap<Coord, Char>): String {
     val unfilled = grid.filterValues { it == '.' }.keys
