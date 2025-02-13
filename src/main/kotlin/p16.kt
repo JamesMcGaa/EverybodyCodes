@@ -32,8 +32,8 @@ fun run16(filename: String, part: Part) {
     if (part in setOf(Part.A, Part.B)) {
         var scoreCounter = 0
         var iterations = 0
-        val stateToIdx = mutableMapOf(positions to iterations)
-        val idxToCumulative = mutableMapOf(iterations to scoreCounter)
+        val stateToIdx = mutableMapOf(positions to 0)
+        val idxToCumulative = mutableMapOf(0 to 0)
         while (true) {
             var line = ""
             for (idx in amounts.indices) {
@@ -68,11 +68,11 @@ fun run16(filename: String, part: Part) {
         depth: Int,
         pos: List<Int>,
         isMax: Boolean,
-        DP: MutableMap<Pair<Int, List<Int>>, Int> = mutableMapOf<Pair<Int, List<Int>>, Int>()
+        dpMemo: MutableMap<Pair<Int, List<Int>>, Int> = mutableMapOf<Pair<Int, List<Int>>, Int>()
     ): Int {
         val key = Pair(depth, pos)
-        if (key in DP) {
-            return DP[key]!!
+        if (key in dpMemo) {
+            return dpMemo[key]!!
         }
 
         if (depth == 0) {
@@ -92,17 +92,17 @@ fun run16(filename: String, part: Part) {
             listOf(lower, upper, same).maxOf { newPos ->
                 var line = ""
                 newPos.forEachIndexed { index, i -> line += slots[index][newPos[index]] }
-                bestPossibleDP(depth - 1, newPos, isMax, DP) + scoreLine(line, part)
+                bestPossibleDP(depth - 1, newPos, isMax = true, dpMemo) + scoreLine(line, part)
             }
         } else {
             listOf(lower, upper, same).minOf { newPos ->
                 var line = ""
                 newPos.forEachIndexed { index, i -> line += slots[index][newPos[index]] }
-                bestPossibleDP(depth - 1, newPos, isMax, DP) + scoreLine(line, part)
+                bestPossibleDP(depth - 1, newPos, isMax = false, dpMemo) + scoreLine(line, part)
             }
         }
 
-        DP[key] = best
+        dpMemo[key] = best
         return best
     }
     println("Part C: ${bestPossibleDP(256, positions, true)}, ${bestPossibleDP(256, positions, false)}")
