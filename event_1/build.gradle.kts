@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.9.23"
+    kotlin("jvm") version "2.2.10"
 }
 
 group = "org.example"
@@ -21,7 +21,7 @@ tasks.test {
 sourceSets {
     main {
         java {
-            srcDir("../AdventOfCodeAll/KotlinUtils")
+            srcDir("../../AdventOfCodeAll/KotlinUtils")
         }
     }
 }
