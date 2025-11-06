@@ -1,10 +1,11 @@
 import java.io.File
+import kotlin.properties.Delegates
 
 fun main() {
     println("Part A: ${p2("inputs/input2a.txt")}")
-    TreeNode.allNodes.clear()
+    TreeNode.resetRoot()
     println("Part B: ${p2("inputs/input2b.txt")}")
-    TreeNode.allNodes.clear()
+    TreeNode.resetRoot()
     println("Part C: ${p2("inputs/input2c.txt", shouldSwapFullSubtree = true)}")
 }
 
@@ -14,24 +15,41 @@ private class TreeNode(
     var rank: Int,
     var shadowSymbol: String,
     var shadowRank: Int,
-    var path: String,
-    var depth: Int = 1,
 ) {
 
-    companion object {
-        val allNodes = mutableMapOf<Int, MutableSet<TreeNode>>()
+    lateinit var path: String
+    lateinit var ancestor: TreeNode
+    var isLeftOfAncestor by Delegates.notNull<Boolean>()
 
-        fun registerNode(node: TreeNode) {
-            if (allNodes.containsKey(node.depth)) {
-                allNodes[node.depth]!!.add(node)
-            } else {
-                allNodes[node.depth] = mutableSetOf(node)
-            }
+    companion object {
+        // Give them a root to allow the top nodes to swap
+        val ROOT = TreeNode(
+            id = Int.MAX_VALUE,
+            symbol = "ROOT",
+            rank = Int.MAX_VALUE,
+            shadowSymbol = "ROOT",
+            shadowRank = Int.MAX_VALUE,
+        )
+
+        fun resetRoot() {
+            ROOT.left = null
+            ROOT.right = null
         }
     }
 
     var left: TreeNode? = null
     var right: TreeNode? = null
+
+    fun getPathToNodeMapping(
+        dict: MutableMap<String, TreeNode> = mutableMapOf(),
+        pathToThisNode: String = "",
+    ): MutableMap<String, TreeNode> {
+        this.path = pathToThisNode
+        dict[pathToThisNode] = this
+        this.left?.getPathToNodeMapping(dict, pathToThisNode + "L")
+        this.right?.getPathToNodeMapping(dict, pathToThisNode + "R")
+        return dict
+    }
 
     fun swap() {
         val tempSymbol = symbol
@@ -44,30 +62,40 @@ private class TreeNode(
 
     fun addNode(node: TreeNode) {
         if (node.rank < this.rank) { // move left is smaller
-            node.path += "L"
-            node.depth = this.depth + 1
             if (left == null) {
                 this.left = node
-                registerNode(node)
+                node.isLeftOfAncestor = true
+                node.ancestor = this
             } else {
                 this.left!!.addNode(node)
             }
         } else {
-            node.path += "R"
-            node.depth = this.depth + 1
             if (right == null) {
                 this.right = node
-                registerNode(node)
+                node.isLeftOfAncestor = false
+                node.ancestor = this
             } else {
                 this.right!!.addNode(node)
             }
         }
     }
+
+    fun maximalLevelString(): String {
+        val customComparator: Comparator<Map.Entry<Int, List<MutableMap.MutableEntry<String, TreeNode>>>> =
+            compareBy<Map.Entry<Int, List<MutableMap.MutableEntry<String, TreeNode>>>> { it.value.size }.thenByDescending { it.key }
+        return this.getPathToNodeMapping().entries.groupBy { it.key.length }
+            .maxWith(customComparator)
+            .value.map { it.value }
+            .sortedBy { it.path }.joinToString(separator = "") { it.symbol }
+    }
 }
 
-fun p2(filename: String, shouldSwapFullSubtree: Boolean = false): String {
-    var leftTree: TreeNode? = null
-    var rightTree: TreeNode? = null
+fun p2(
+    filename: String,
+    shouldSwapFullSubtree: Boolean = false,
+): String {
+    var isInitialized = false
+
     File(filename).readLines().forEach { line ->
         if (line.split(" ").first() == "ADD") {
             val values = handleAdd(line)
@@ -83,40 +111,63 @@ fun p2(filename: String, shouldSwapFullSubtree: Boolean = false): String {
                 rank = leftRank,
                 shadowSymbol = rightSymbol,
                 shadowRank = rightRank,
-                path = "L",
             )
-            if (leftTree == null) {
-                leftTree = leftNode
-                TreeNode.registerNode(leftNode)
-            } else {
-                leftTree.addNode(leftNode)
-            }
-
             val rightNode = TreeNode(
                 id = id,
                 symbol = rightSymbol,
                 rank = rightRank,
                 shadowSymbol = leftSymbol,
                 shadowRank = leftRank,
-                path = "R",
             )
-            if (rightTree == null) {
-                rightTree = rightNode
-                TreeNode.registerNode(rightNode)
+
+            if (!isInitialized) {
+                leftNode.isLeftOfAncestor = true
+                leftNode.ancestor = TreeNode.ROOT
+                TreeNode.ROOT.left = leftNode
+
+                rightNode.isLeftOfAncestor = false
+                rightNode.ancestor = TreeNode.ROOT
+                TreeNode.ROOT.right = rightNode
+
+                isInitialized = true
             } else {
-                rightTree.addNode(rightNode)
+                TreeNode.ROOT.left!!.addNode(leftNode)
+                TreeNode.ROOT.right!!.addNode(rightNode)
             }
         } else {
             val swapId = line.split(" ")[1].toInt()
 
             if (shouldSwapFullSubtree) {
+                val nodesToSwap = TreeNode.ROOT.getPathToNodeMapping().values.filter { it.id == swapId }
+                assert(nodesToSwap.size == 2)
+                val a = nodesToSwap.first()
+                val b = nodesToSwap.last()
 
+                if (a.isLeftOfAncestor) {
+                    a.ancestor.left = b
+                } else {
+                    a.ancestor.right = b
+                }
+
+                if (b.isLeftOfAncestor) {
+                    b.ancestor.left = a
+                } else {
+                    b.ancestor.right = a
+                }
+                val bAncestorTemp = b.ancestor
+                b.ancestor = a.ancestor
+                a.ancestor = bAncestorTemp
+
+                val aIsLeftOfAncestorTemp = a.isLeftOfAncestor
+                a.isLeftOfAncestor = b.isLeftOfAncestor
+                b.isLeftOfAncestor = aIsLeftOfAncestorTemp
+            } else {
+                TreeNode.ROOT.getPathToNodeMapping().values.filter { it.id == swapId }.forEach { it.swap() }
             }
-            TreeNode.allNodes.values.flatten().filter { it.id == swapId }.forEach { it.swap() }
         }
     }
 
-    return TreeNode.allNodes.values.maxBy { it.size }.sortedBy { it.path }.joinToString(separator = "") { it.symbol }
+    return TreeNode.ROOT.left!!.maximalLevelString() + TreeNode.ROOT.right!!.maximalLevelString()
 }
 
 fun handleAdd(line: String): List<String> {
