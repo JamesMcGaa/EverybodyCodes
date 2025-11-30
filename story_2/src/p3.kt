@@ -2,8 +2,8 @@ import Utils.Coord
 import java.io.File
 
 fun main() {
-//    println("Part A: ${p3a()}")
-//    println("Part B: ${p3b()}")
+    println("Part A: ${p3a()}")
+    println("Part B: ${p3b()}")
     println("Part C: ${p3c()}")
 }
 
@@ -15,35 +15,21 @@ fun p3c(): Long {
     }
     val grid = Utils.readAsGrid("inputs/input3c.txt", emptyIdx + 1 .. input.lastIndex, { it.digitToInt().toLong() })
 
-    val signatures = dice.map { die ->
-        val path = mutableListOf<Long>()
-        repeat(grid.size) {
-            path.add(die.roll())
-        }
-        path.reversed().toMutableList()
-    }
-
     val allSeen = mutableSetOf<Coord>()
 
-    val queue = mutableSetOf<Pair<Coord, MutableList<Long>>>()
-    signatures.forEach { signature ->
-        grid.filterValues { it == signature.last() }.forEach {
-            queue.add(Pair(it.key, signature))
+    dice.forEach { die ->
+        var frontier = grid.keys.toMutableSet()
+        while (frontier.isNotEmpty()) {
+            val roll = die.roll()
+            val newFrontier = mutableSetOf<Coord>()
+            frontier.forEach { frontierNode ->
+                if (frontierNode in grid.keys && grid[frontierNode] == roll) {
+                    allSeen.add(frontierNode)
+                    newFrontier.addAll(frontierNode.manhattanNeighbors union setOf(frontierNode))
+                }
+            }
+            frontier = newFrontier
         }
-    }
-
-    while (queue.isNotEmpty()) {
-        val current = queue.random()
-        queue.remove(current)
-        val currentPos = current.first
-        allSeen.add(currentPos)
-
-        val newSignature = current.second.toMutableList()
-        newSignature.removeLast()
-
-        val legalMoves =
-            (currentPos.manhattanNeighbors union setOf(currentPos)).filter { grid.containsKey(it) && grid[it] == newSignature.last() }
-        queue.addAll(legalMoves.map { Pair(it, newSignature) })
     }
 
     return allSeen.size.toLong()
@@ -109,8 +95,6 @@ class Dice(val id: Long, val faces: List<Long>, val seed: Long) {
         pulse %= seed
         pulse += 1 + rollCounter + seed
 
-//        println("$rollCounter, $spin, $pulse")
-
         return faces[facePtr]
     }
 }
@@ -122,6 +106,6 @@ fun parseLine(input: String): Dice {
     val id = matchResult.groupValues[1].toLong()
     val faces = matchResult.groupValues[2].split(',').map { it.toLong() }
     val seed = matchResult.groupValues[3].toLong()
-//    println("$id, $faces, $seed")
+
     return Dice(id = id, faces = faces, seed = seed)
 }
