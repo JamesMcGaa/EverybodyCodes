@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="failureaccess-1.0.3">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Downloads/failureaccess-1.0.3.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/guava-33.5.0-jre.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
